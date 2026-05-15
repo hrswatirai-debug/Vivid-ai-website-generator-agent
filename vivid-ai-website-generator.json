@@ -1,0 +1,361 @@
+{
+  "name": "World-Class Website Generator (Lean)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 🎨 World-Class Website Generator\n\nType a website description in the chat.\n\nExamples:\n- Portfolio site for a freelance photographer in London\n- E-commerce homepage for a sustainable skincare brand",
+        "height": 168,
+        "width": 500,
+        "color": 4
+      },
+      "id": "6d05d4c9-f6a5-4e7e-bb2f-d9635e47e797",
+      "name": "📝 Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1504,
+        576
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "public": true,
+        "initialMessages": "Hi there! 👋\nMy name is Mi-R-A-I. I can build a complete website for you. Just tell me what you want, and I’ll generate clean, ready-to-use HTML code instantly.\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        1344,
+        880
+      ],
+      "id": "e80a8a98-17b5-4809-8deb-3c8f80bd9ada",
+      "name": "When chat message received",
+      "webhookId": "332a7c96-6f22-44b0-a4d5-cd77b112506a"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = (\n  $input.first().json.chatInput ||\n  $input.first().json.query?.prompt ||\n  ''\n).toString().trim();\n\nconst lower = input.toLowerCase();\n\nconst greetings = ['hi','hello','hey','thanks','thank you','ok','okay','bye','sup','yo','howdy','good morning','good evening','good afternoon','what can you do','who are you'];\nconst isGreeting = greetings.some(g => lower === g || lower === g + '!' || lower === g + '.');\nconst isTooShort = input.length < 15;\nconst hasWebsiteKeywords = /(website|site|page|landing|portfolio|app|blog|shop|store|brand|company|business|product|agency|studio|platform|startup|saas|firm|practice|restaurant|hotel|clinic|gym|salon)/i.test(input);\n\nconst intent = (isGreeting || (isTooShort && !hasWebsiteKeywords)) ? 'other' : 'build';\n\nreturn [{\n  json: {\n    ...$input.first().json,\n    raw_input: input,\n    intent\n  }\n}];"
+      },
+      "id": "397442f4-a265-4efe-8362-47581689d708",
+      "name": "Intent Check",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1520,
+        880
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.intent }}",
+              "rightValue": "build",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "75264609-ecc9-42e8-914a-82a0dd2ee7a9",
+      "name": "Is Website Prompt?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1712,
+        880
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawPrompt = (\n  $input.first().json.chatInput ||\n  $input.first().json.raw_input ||\n  ''\n).toString().trim();\n\nif (!rawPrompt) {\n  throw new Error('Missing required parameter: prompt');\n}\nif (rawPrompt.length > 2000) {\n  throw new Error('Prompt too long (max 2000 chars)');\n}\n\nconst directions = [\n  {\n    name: 'editorial',\n    description: 'Editorial magazine aesthetic — large serif display headings (Playfair Display, Fraunces, or Instrument Serif), generous whitespace, asymmetric grid, muted earth-tone palette, restrained use of color.'\n  },\n  {\n    name: 'brutalist-modern',\n    description: 'Refined brutalism — oversized sans-serif typography (Inter, Space Grotesk), high contrast monochrome with one accent color, hard edges, intentionally raw layout, subtle grain or noise textures.'\n  },\n  {\n    name: 'soft-luxury',\n    description: 'Soft luxury — cream/off-white backgrounds, deep emerald or burgundy accents, elegant serif/sans pairing, soft shadows, rounded corners, tasteful use of gold or sage, photography-forward.'\n  },\n  {\n    name: 'tech-minimal',\n    description: 'Tech minimal — true black or near-black background, thin geometric sans-serif (Geist, Inter), single neon accent (electric blue, lime, or violet), micro-animations implied through transitions, dense information hierarchy.'\n  },\n  {\n    name: 'warm-handcrafted',\n    description: 'Warm handcrafted — beige and terracotta palette, friendly humanist typography, organic shapes, subtle textures, generous line-height, conversational copy tone.'\n  },\n  {\n    name: 'gradient-vibrant',\n    description: 'Vibrant gradient — bold mesh gradients, glassmorphism cards, modern geometric sans, animated-feel layouts using CSS transforms, high-energy color story (magenta/cyan, orange/pink, lime/teal).'\n  }\n];\n\nconst direction = directions[Math.floor(Math.random() * directions.length)];\n\nreturn [{\n  json: {\n    user_prompt: rawPrompt,\n    direction: direction.name,\n    direction_brief: direction.description,\n    received_at: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "5fa1ae89-9e02-4a85-a86b-06016d83b59e",
+      "name": "Prompt Refiner",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1856,
+        800
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "openAiApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.requestPayload }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "138b0b75-1dc7-48fa-b8dc-170026d7d819",
+      "name": "OpenAI — Generate Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        2512,
+        608
+      ],
+      "typeVersion": 4.2,
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "openAiApi": {
+          "id": "HKNAOPtx98yVM94x",
+          "name": "OpenAI account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst content = raw?.choices?.[0]?.message?.content;\nif (!content) throw new Error('OpenAI returned empty content');\n\nconst spec = typeof content === 'string' ? JSON.parse(content) : content;\nlet html = spec.html || '';\n\nif (!/<!DOCTYPE\\s+html/i.test(html)) throw new Error('HTML missing DOCTYPE');\nif (!/<\\/html>/i.test(html)) throw new Error('HTML not closed');\nif (html.length < 500) throw new Error('HTML suspiciously short — likely truncated');\n\nif (!/cdn\\.tailwindcss\\.com/.test(html)) {\n  html = html.replace(/<\\/head>/i, '  <script src=\"https://cdn.tailwindcss.com\"></script>\\n</head>');\n}\n\nif (!/name=[\"']viewport[\"']/.test(html)) {\n  html = html.replace(/<head>/i, '<head>\\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">');\n}\n\nreturn [{\n  json: {\n    title: spec.title,\n    description: spec.description,\n    html,\n    direction: $('Prompt Refiner').first().json.direction,\n    user_prompt: $('Prompt Refiner').first().json.user_prompt\n  }\n}];"
+      },
+      "id": "e4cba8d4-596f-4df4-9c3f-b0953c634249",
+      "name": "Extract & Validate HTML",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2448,
+        832
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const { html } = $input.first().json;\n\n// Normalize double-encoded \\n literals → real newlines → strip entirely\n// HTML renders identically without newlines\nconst cleanHtml = html\n  .replace(/\\\\n/g, '\\n')\n  .replace(/\\n/g, '');\n\nreturn [{\n  json: {\n    output: cleanHtml\n  }\n}];"
+      },
+      "id": "d639193e-342c-4680-9646-b74f26865fb2",
+      "name": "Return to Chat",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        2608,
+        816
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    output: \"I generate complete websites from a description. Try something like:\\n\\n• *A bold landing page for a Japanese whisky brand*\\n• *Portfolio site for a freelance photographer based in London*\\n• *E-commerce homepage for a sustainable skincare brand*\\n• *SaaS product page for an AI scheduling tool*\\n\\nDescribe your website and I'll build it.\"\n  }\n}];"
+      },
+      "id": "15acc3d0-6880-4b15-a603-2e198370d198",
+      "name": "Guide Response",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        1936,
+        960
+      ],
+      "typeVersion": 2
+    },
+    {
+      "parameters": {
+        "jsCode": "const { user_prompt, direction, direction_brief, imageUrls } = $input.first().json;\n\nconst imageBlock = imageUrls?.length\n  ? `\\n\\nREAL IMAGES — use ONLY these exact Pexels URLs in <img> tags (do not invent any other URLs):\\n${imageUrls.map((u, i) => `${i + 1}. ${u}`).join('\\n')}`\n  : '';\n\nconst systemPrompt = `You are a world-class web designer and front-end engineer — the kind whose work wins Awwwards and gets featured on Sites of the Day. You ship websites that feel intentional, not generic.\n\nNON-NEGOTIABLES:\n- Accent color must be sophisticated and easy on the eye — deep tones only (forest green, navy, slate blue, warm burgundy, dusty rose, muted teal). Never use bright red, bright orange, or high-saturation colors as the primary accent.\n- When a section has a colored background, always use white or off-white text and verify it has sufficient contrast. Never place white text on a light-colored background. Never place dark text on a dark background.\n- Faithful to the user's prompt. Every section must serve their stated brief.\n- Real, specific, evocative copy. NEVER use Lorem ipsum or filler. Write copy as if you understand the brand.\n- Strong typographic hierarchy — at least one display-scale heading (text-6xl+ on desktop), clear secondary scale, well-leaded body text.\n- Considered color palette — exactly 1 background, 1 foreground, 1 accent, 1 muted. No fifth color.\n- Real layout craft — asymmetry, intentional whitespace, varied section rhythms.\n- Mobile-first responsive using Tailwind sm:/md:/lg: prefixes.\n- Accessible semantic HTML5 with descriptive alt text and sufficient color contrast.\n\nVISUAL TOOLBOX:\n- Google Fonts via link in head. Pair fonts thoughtfully (Fraunces + Inter, Playfair + Manrope, etc).\n- Tailwind CSS via https://cdn.tailwindcss.com\n- Inline SVG for logos, icons, decorative shapes.\n- Subtle CSS gradients, mesh effects, grain via SVG noise filters.\n- Hover states, smooth transitions (transition-all duration-300).\n- If real image URLs are provided below, use ONLY those exact URLs in <img> tags. Use each one at most once.\n\nFORBIDDEN — STRICT RULES, NO EXCEPTIONS:\n- NEVER use local or relative image paths like /images/*, ./images/*, images/*.jpg, or any src that does not start with https://\n- NEVER invent or fabricate image URLs. If no real URL is available for a slot, use a CSS gradient + SVG instead.\n- NEVER use placeholder services: no picsum, no loremflickr, no unsplash, no placehold.it, no via.placeholder.com.\n- Every image slot MUST either use a provided https:// Pexels URL or be replaced with a div using CSS gradient + inline SVG icon. Zero broken images is non-negotiable.\n- Generic phrases: innovative solutions, cutting-edge, leverage synergies.\n- Default purple-to-blue gradients unless the brief calls for it.\n- External JavaScript beyond Tailwind CDN.\n- Placeholder URLs — use plausible brand-matching domains.\n\nOUTPUT: one complete valid HTML5 document, DOCTYPE through closing html tag. Tailwind via CDN. No build step required.`;\n\nconst userContent = `BRIEF:\\n${user_prompt}\\n\\nDESIGN DIRECTION: ${direction}\\n${direction_brief}${imageBlock}\\n\\nBuild it. Make it the best version of itself — confident, specific, shaped by the brief. Surprise me with one detail I would not have asked for but will love when I see it.`;\n\nconst payload = {\n  model: 'gpt-4o-2024-08-06',\n  temperature: 0.85,\n  messages: [\n    { role: 'system', content: systemPrompt },\n    { role: 'user', content: userContent }\n  ],\n  response_format: {\n    type: 'json_schema',\n    json_schema: {\n      name: 'website',\n      strict: true,\n      schema: {\n        type: 'object',\n        properties: {\n          title: { type: 'string', description: 'Page title — brand name and short tagline' },\n          description: { type: 'string', description: 'Meta description 140-160 chars' },\n          html: { type: 'string', description: 'Complete HTML5 document from DOCTYPE to closing html tag' }\n        },\n        required: ['title', 'description', 'html'],\n        additionalProperties: false\n      }\n    }\n  }\n};\n\nreturn [{\n  json: {\n    ...$input.first().json,\n    requestPayload: JSON.stringify(payload)\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        720
+      ],
+      "id": "f0b07274-96b1-4619-8071-70a1bc5d5a13",
+      "name": "Build Request Body Code"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.pexels.com/v1/search?query={{ $json.user_prompt }}&per_page=6&orientation=landscape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "koWZfcz9PEV6vnMVEdHd3EtEOApzsKRz2cHcWR5UKGsJugslyGLdzrog"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2144,
+        640
+      ],
+      "id": "3b7b9d93-4f64-4774-9dab-42cac309f9e1",
+      "name": "Fetch Images Pexels"
+    },
+    {
+      "parameters": {
+        "jsCode": "const pexelsData = $input.first().json;\nconst photos = pexelsData.photos || [];\nconst imageUrls = photos\n  .map(p => p.src?.large || p.src?.medium)\n  .filter(Boolean)\n  .slice(0, 6);\n\nconst refiner = $('Prompt Refiner').first().json;\nconst bodyCode = $('Build Request Body Code').first().json;\n\nreturn [{\n  json: {\n    ...refiner,\n    ...bodyCode,\n    imageUrls\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2320,
+        544
+      ],
+      "id": "4fb06679-575f-42ce-9ff5-102596f7837e",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Intent Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Intent Check": {
+      "main": [
+        [
+          {
+            "node": "Is Website Prompt?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Website Prompt?": {
+      "main": [
+        [
+          {
+            "node": "Prompt Refiner",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Guide Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prompt Refiner": {
+      "main": [
+        [
+          {
+            "node": "Build Request Body Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI — Generate Website": {
+      "main": [
+        [
+          {
+            "node": "Extract & Validate HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract & Validate HTML": {
+      "main": [
+        [
+          {
+            "node": "Return to Chat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Request Body Code": {
+      "main": [
+        [
+          {
+            "node": "Fetch Images Pexels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Images Pexels": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "OpenAI — Generate Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return to Chat": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "21cb384a-ee72-4170-b609-e45840939243",
+  "meta": {
+    "instanceId": "31b982100a331271c83d06ddebcbb18febfbf4d1010da2c1d658a491f4ffb41e"
+  },
+  "id": "n0V3RstrHDPpVC7v",
+  "tags": [
+    {
+      "updatedAt": "2026-05-08T22:11:42.046Z",
+      "createdAt": "2026-05-08T22:11:42.046Z",
+      "id": "feOcZNsDtoVHZ9Nc",
+      "name": "website-generator"
+    },
+    {
+      "updatedAt": "2026-05-08T22:11:42.050Z",
+      "createdAt": "2026-05-08T22:11:42.050Z",
+      "id": "sqhDkksn7DoZZV9z",
+      "name": "lean"
+    }
+  ]
+}
